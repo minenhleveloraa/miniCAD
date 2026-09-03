@@ -1,0 +1,15 @@
+{
+  "name": "minicad",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev:web": "pnpm --dir apps/web dev",
+    "dev:mobile": "pnpm --dir apps/mobile start",
+    "build:web": "pnpm --dir apps/web build",
+    "lint:web": "pnpm --dir apps/web lint",
+    "lint:mobile": "pnpm --dir apps/mobile lint",
+    "typecheck:web": "pnpm --dir apps/web typecheck",
+    "typecheck:mobile": "pnpm --dir apps/mobile typecheck"
+  }
+}

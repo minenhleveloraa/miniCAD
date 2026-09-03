@@ -1,0 +1,417 @@
+@import "tailwindcss";
+
+/* ───────────────── Design tokens ───────────────── */
+:root {
+  --cream: #faf6f1;
+  --cream-light: #fefcf9;
+  --ink: #1a1a2e;
+  --ink-soft: #3d3d56;
+  --ink-muted: #6b6b80;
+  --coral: #e8634a;
+  --coral-light: #f4845f;
+  --coral-glow: rgba(232, 99, 74, 0.15);
+  --amber-warm: #f5a623;
+  --charcoal: #2d2d3f;
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.45);
+  --shadow-soft: 0 8px 32px -12px rgba(26, 26, 46, 0.12);
+  --shadow-elevated: 0 24px 64px -20px rgba(26, 26, 46, 0.18);
+  --shadow-glow: 0 20px 50px -16px rgba(232, 99, 74, 0.3);
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+  --radius-2xl: 2.25rem;
+
+  /* Tailwind compat */
+  --background: var(--cream);
+  --foreground: var(--ink);
+
+  /* Legacy compat — keep these so BrandMark still works */
+  --paper: var(--cream);
+  --navy: var(--charcoal);
+  --red: var(--coral);
+  --teal: var(--coral-light);
+  --teal-strong: var(--coral);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-dm-sans);
+  --font-serif: var(--font-dm-serif);
+}
+
+/* ───────────────── Base ───────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--cream);
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-dm-sans), "DM Sans", system-ui, -apple-system, sans-serif;
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgba(232, 99, 74, 0.18);
+  color: var(--ink);
+}
+
+/* ───────────────── Typography ───────────────── */
+.font-serif {
+  font-family: var(--font-dm-serif), "DM Serif Display", Georgia, serif;
+}
+
+/* ───────────────── Animations ───────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(1deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease both;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-float {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-600 { animation-delay: 600ms; }
+
+/* ───────────────── Welcome page ───────────────── */
+.welcome-bg {
+  background: var(--cream);
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-bg::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 60%;
+  height: 80%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(232, 99, 74, 0.06) 0%,
+    rgba(245, 166, 35, 0.04) 40%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.hero-gradient-text {
+  background: linear-gradient(135deg, var(--coral) 0%, var(--coral-light) 50%, var(--amber-warm) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-panel {
+  position: relative;
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-elevated);
+}
+
+.gradient-panel img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gradient-panel-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(26, 26, 46, 0.4) 0%,
+    rgba(26, 26, 46, 0.1) 40%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* ───────────────── Glass card ───────────────── */
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-soft);
+}
+
+/* ───────────────── Login page ───────────────── */
+.login-left-panel {
+  position: relative;
+  overflow: hidden;
+  background: var(--charcoal);
+}
+
+.login-left-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(232, 99, 74, 0.12) 0%,
+    rgba(245, 166, 35, 0.08) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.login-image-wrapper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.login-image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.55;
+}
+
+.login-image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    160deg,
+    rgba(45, 45, 63, 0.65) 0%,
+    rgba(45, 45, 63, 0.3) 60%,
+    rgba(232, 99, 74, 0.15) 100%
+  );
+}
+
+.login-form-card {
+  background: var(--cream-light);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-2xl);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    var(--shadow-elevated);
+}
+
+.login-input {
+  width: 100%;
+  height: 3.5rem;
+  padding: 0 1rem 0 3rem;
+  border: 1.5px solid rgba(26, 26, 46, 0.1);
+  border-radius: var(--radius-lg);
+  background: white;
+  font-size: 0.95rem;
+  color: var(--ink);
+  outline: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+
+.login-input::placeholder {
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+
+.login-input:hover {
+  border-color: rgba(26, 26, 46, 0.2);
+}
+
+.login-input:focus {
+  border-color: var(--coral);
+  box-shadow: 0 0 0 4px var(--coral-glow);
+}
+
+.login-input:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.login-submit {
+  width: 100%;
+  height: 3.5rem;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--coral) 0%, var(--coral-light) 100%);
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-glow);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-submit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.12) 100%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.login-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 56px -16px rgba(232, 99, 74, 0.4);
+}
+
+.login-submit:hover::before {
+  opacity: 1;
+}
+
+.login-submit:active {
+  transform: translateY(0);
+}
+
+.login-submit:disabled:hover {
+  transform: none;
+  box-shadow: var(--shadow-glow);
+}
+
+/* ───────────────── Warm orb decoration ───────────────── */
+.warm-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.warm-orb-one {
+  top: -8rem;
+  right: -6rem;
+  width: 28rem;
+  height: 28rem;
+  background: radial-gradient(circle, rgba(232, 99, 74, 0.12), transparent 65%);
+}
+
+.warm-orb-two {
+  bottom: -10rem;
+  left: -8rem;
+  width: 24rem;
+  height: 24rem;
+  background: radial-gradient(circle, rgba(245, 166, 35, 0.08), transparent 65%);
+}
+
+/* ───────────────── Responsive ───────────────── */
+@media (max-width: 1023px) {
+  .gradient-panel {
+    border-radius: var(--radius-xl);
+    max-height: 320px;
+  }
+}
+
+@media (max-width: 639px) {
+  .login-form-card {
+    border-radius: var(--radius-xl);
+    padding: 1.75rem;
+  }
+}
+
+/* ───────────────── Reduced motion ───────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

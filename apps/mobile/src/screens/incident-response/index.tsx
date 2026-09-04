@@ -112,6 +112,13 @@ export function IncidentResponseScreen({ incidentId }: IncidentResponseScreenPro
   const [feedback, setFeedback] = useState<string | null>(null);
   const incident = useMemo(() => incidents.find((item) => item.id === incidentId), [incidentId, incidents]);
 
+  function returnToOverview() {
+    // Reset the nested Incident stack before changing tabs. Without this, the
+    // completed response screen remains mounted and reappears on the next visit.
+    router.dismissAll();
+    router.replace("/overview");
+  }
+
   if (!incident) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md, padding: spacing.xl, backgroundColor: colors.canvas }}>
@@ -128,7 +135,7 @@ export function IncidentResponseScreen({ incidentId }: IncidentResponseScreenPro
             </Text>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.replace("/overview")}
+              onPress={returnToOverview}
               style={{ paddingHorizontal: spacing.lg, paddingVertical: 13, borderRadius: radius.full, backgroundColor: colors.ink }}
             >
               <Text style={{ color: colors.onDark, ...typography.label }}>Return to overview</Text>
@@ -163,7 +170,7 @@ export function IncidentResponseScreen({ incidentId }: IncidentResponseScreenPro
     const result = await submitIncidentReport(responseIncident.id, actionsTaken.trim(), outcome.trim());
     if (result === "success") {
       Alert.alert("Report submitted", "The incident is resolved and you are available for a new response.", [
-        { text: "Done", onPress: () => router.replace("/overview") },
+        { text: "Done", onPress: returnToOverview },
       ]);
       return;
     }

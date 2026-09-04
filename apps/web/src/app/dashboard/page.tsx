@@ -34,10 +34,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   ]);
   const createdIncidentNumber = created && /^\d+$/.test(created) ? Number(created) : null;
   const dutyByOfficer = new Map((dutyResult.data ?? []).map((duty) => [duty.officer_id, duty]));
+  const responseByOfficer = new Map<string, OfficerAvailabilityItem["activeResponse"]>();
+
+  for (const incident of incidentResult.data ?? []) {
+    if (
+      incident.claimed_by &&
+      ["claimed", "en_route", "on_scene"].includes(incident.status) &&
+      !responseByOfficer.has(incident.claimed_by)
+    ) {
+      responseByOfficer.set(incident.claimed_by, {
+        incidentNumber: incident.incident_number,
+        status: incident.status,
+      });
+    }
+  }
+
   const officers: OfficerAvailabilityItem[] = (profileResult.data ?? []).map((profile) => {
     const duty = dutyByOfficer.get(profile.id);
 
     return {
+      activeResponse: responseByOfficer.get(profile.id) ?? null,
       badgeNumber: profile.badge_number,
       changedAt: duty?.changed_at ?? new Date(0).toISOString(),
       displayName: profile.display_name,
@@ -51,7 +67,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       createdIncidentNumber={createdIncidentNumber}
       dataError={Boolean(incidentResult.error)}
       incidents={incidentResult.data ?? []}
-      officerDataError={Boolean(profileResult.error || dutyResult.error)}
+      officerDataError={Boolean(profileResult.error || dutyResult.error || incidentResult.error)}
       officers={officers}
     />
   );

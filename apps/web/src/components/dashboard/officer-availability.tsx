@@ -1,12 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RadioTower, ShieldCheck, UserRoundCheck, UsersRound } from "lucide-react";
+import { RadioTower, ShieldCheck, Siren, UserRoundCheck, UsersRound } from "lucide-react";
 
+import { formatIncidentNumber, INCIDENT_STATUS_LABELS } from "@/lib/incidents";
 import { createClient } from "@/lib/supabase/client";
-import type { OfficerDutyRow } from "@/types/database";
+import type { IncidentStatus, OfficerDutyRow } from "@/types/database";
+
+type ActiveResponse = {
+  incidentNumber: number;
+  status: IncidentStatus;
+};
 
 export type OfficerAvailabilityItem = {
+  activeResponse: ActiveResponse | null;
   badgeNumber: string | null;
   changedAt: string;
   displayName: string;
@@ -21,6 +28,12 @@ type OfficerAvailabilityProps = {
 
 type ConnectionState = "connecting" | "live" | "offline";
 
+type ActiveResponseSnapshot = {
+  claimed_by: string | null;
+  incident_number: number;
+  status: IncidentStatus;
+};
+
 const timeFormatter = new Intl.DateTimeFormat("en-ZA", {
   hour: "2-digit",
   minute: "2-digit",
@@ -32,34 +45,60 @@ export function OfficerAvailability({ dataError, initialOfficers }: OfficerAvail
   const [connection, setConnection] = useState<ConnectionState>("connecting");
   const [hasDataError, setHasDataError] = useState(dataError);
   const [officers, setOfficers] = useState(initialOfficers);
-  const availableCount = useMemo(() => officers.filter((officer) => officer.isOnDuty).length, [officers]);
+  const counts = useMemo(() => {
+    let available = 0;
+    let responding = 0;
+
+    for (const officer of officers) {
+      if (officer.activeResponse) responding += 1;
+      else if (officer.isOnDuty) available += 1;
+    }
+
+    return { available, responding };
+  }, [officers]);
 
   useEffect(() => {
     const supabase = createClient();
     let isMounted = true;
 
     async function reconcileOfficerSnapshot() {
-      const [profileResult, dutyResult] = await Promise.all([
+      const [profileResult, dutyResult, incidentResult] = await Promise.all([
         supabase
           .from("profiles")
           .select("id, display_name, badge_number")
           .eq("role", "officer")
           .order("display_name", { ascending: true }),
         supabase.from("officer_duty").select("officer_id, is_on_duty, changed_at"),
+        supabase
+          .from("incidents")
+          .select("incident_number, claimed_by, status")
+          .in("status", ["claimed", "en_route", "on_scene"])
+          .order("claimed_at", { ascending: false }),
       ]);
 
       if (!isMounted) return;
-      if (profileResult.error || dutyResult.error) {
+      if (profileResult.error || dutyResult.error || incidentResult.error) {
         setHasDataError(true);
         setConnection("offline");
         return;
       }
 
       const dutyByOfficer = new Map((dutyResult.data ?? []).map((duty) => [duty.officer_id, duty]));
+      const responseByOfficer = new Map<string, ActiveResponse>();
+      for (const incident of (incidentResult.data ?? []) as ActiveResponseSnapshot[]) {
+        if (incident.claimed_by && !responseByOfficer.has(incident.claimed_by)) {
+          responseByOfficer.set(incident.claimed_by, {
+            incidentNumber: incident.incident_number,
+            status: incident.status,
+          });
+        }
+      }
+
       setOfficers(
         (profileResult.data ?? []).map((profile) => {
           const duty = dutyByOfficer.get(profile.id);
           return {
+            activeResponse: responseByOfficer.get(profile.id) ?? null,
             badgeNumber: profile.badge_number,
             changedAt: duty?.changed_at ?? new Date(0).toISOString(),
             displayName: profile.display_name,
@@ -71,14 +110,27 @@ export function OfficerAvailability({ dataError, initialOfficers }: OfficerAvail
       setHasDataError(false);
     }
 
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let dutyChannel: ReturnType<typeof supabase.channel> | null = null;
+    let incidentChannel: ReturnType<typeof supabase.channel> | null = null;
+    const joinedTopics = new Set<string>();
+
+    function trackChannel(topic: string, status: string) {
+      if (status === "SUBSCRIBED") {
+        joinedTopics.add(topic);
+        if (joinedTopics.size === 2) setConnection("live");
+        void reconcileOfficerSnapshot();
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        joinedTopics.delete(topic);
+        setConnection("offline");
+      }
+    }
 
     void supabase.realtime
       .setAuth()
       .then(() => {
         if (!isMounted) return;
 
-        channel = supabase
+        dutyChannel = supabase
           .channel("minicad:officer-duty", { config: { private: true } })
           .on("broadcast", { event: "officer-duty-changed" }, (message) => {
             const duty = message.payload as Partial<OfficerDutyRow>;
@@ -106,14 +158,14 @@ export function OfficerAvailability({ dataError, initialOfficers }: OfficerAvail
             // also discovers newly provisioned officers and remains canonical.
             void reconcileOfficerSnapshot();
           })
-          .subscribe((status) => {
-            if (status === "SUBSCRIBED") {
-              setConnection("live");
-              void reconcileOfficerSnapshot();
-            } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-              setConnection("offline");
-            }
-          });
+          .subscribe((status) => trackChannel("duty", status));
+
+        incidentChannel = supabase
+          .channel("minicad:incidents", { config: { private: true } })
+          .on("broadcast", { event: "incident-changed" }, () => {
+            void reconcileOfficerSnapshot();
+          })
+          .subscribe((status) => trackChannel("incidents", status));
       })
       .catch(() => {
         if (isMounted) setConnection("offline");
@@ -128,7 +180,8 @@ export function OfficerAvailability({ dataError, initialOfficers }: OfficerAvail
     return () => {
       isMounted = false;
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (channel) void supabase.removeChannel(channel);
+      if (dutyChannel) void supabase.removeChannel(dutyChannel);
+      if (incidentChannel) void supabase.removeChannel(incidentChannel);
     };
   }, []);
 
@@ -140,7 +193,7 @@ export function OfficerAvailability({ dataError, initialOfficers }: OfficerAvail
         <div>
           <h2 className="font-serif text-xl text-[var(--ink)]">Officer availability</h2>
           <p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">
-            {availableCount} of {officers.length} {officers.length === 1 ? "officer" : "officers"} on duty
+            {counts.available} available · {counts.responding} responding
           </p>
         </div>
         <span
@@ -181,22 +234,24 @@ export function OfficerAvailability({ dataError, initialOfficers }: OfficerAvail
               .join("")
               .slice(0, 2)
               .toUpperCase();
+            const isResponding = Boolean(officer.activeResponse);
 
             return (
               <li key={officer.id} className="flex items-center gap-3 rounded-2xl border border-[var(--ink)]/7 bg-white/70 p-3">
-                <span className={`grid size-10 shrink-0 place-items-center rounded-full text-xs font-bold ${officer.isOnDuty ? "bg-[var(--ink)] text-white" : "bg-[var(--ink)]/6 text-[var(--ink-muted)]"}`}>
+                <span className={`grid size-10 shrink-0 place-items-center rounded-full text-xs font-bold ${isResponding || officer.isOnDuty ? "bg-[var(--ink)] text-white" : "bg-[var(--ink)]/6 text-[var(--ink-muted)]"}`}>
                   {initials}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-[var(--ink)]">{officer.displayName}</p>
                   <p className="mt-0.5 truncate text-[0.6875rem] text-[var(--ink-muted)]">
-                    {officer.badgeNumber ? `Badge ${officer.badgeNumber} · ` : ""}
-                    Updated {timeFormatter.format(new Date(officer.changedAt))}
+                    {officer.activeResponse
+                      ? `${formatIncidentNumber(officer.activeResponse.incidentNumber)} · ${INCIDENT_STATUS_LABELS[officer.activeResponse.status]}`
+                      : `${officer.badgeNumber ? `Badge ${officer.badgeNumber} · ` : ""}Updated ${timeFormatter.format(new Date(officer.changedAt))}`}
                   </p>
                 </div>
-                <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.6875rem] font-bold ${officer.isOnDuty ? "bg-emerald-50 text-emerald-700" : "bg-[var(--ink)]/5 text-[var(--ink-muted)]"}`}>
-                  {officer.isOnDuty ? <UserRoundCheck className="size-3" strokeWidth={2} /> : <ShieldCheck className="size-3" strokeWidth={2} />}
-                  {officer.isOnDuty ? "Available" : "Off duty"}
+                <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.6875rem] font-bold ${isResponding ? "bg-[var(--coral)]/10 text-[var(--coral)]" : officer.isOnDuty ? "bg-emerald-50 text-emerald-700" : "bg-[var(--ink)]/5 text-[var(--ink-muted)]"}`}>
+                  {isResponding ? <Siren className="size-3" strokeWidth={2} /> : officer.isOnDuty ? <UserRoundCheck className="size-3" strokeWidth={2} /> : <ShieldCheck className="size-3" strokeWidth={2} />}
+                  {isResponding ? "Responding" : officer.isOnDuty ? "Available" : "Off duty"}
                 </span>
               </li>
             );

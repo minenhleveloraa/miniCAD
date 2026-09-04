@@ -6,4 +6,5 @@ node_modules/
 .expo/
 dist/
 tmp/
+supabase/.temp/
 *.tsbuildinfo

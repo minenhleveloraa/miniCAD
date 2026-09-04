@@ -1,5 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,6 +19,7 @@ export function IncidentsScreen() {
     duty,
     incidents,
     initialLoading,
+    reportConfirmation,
   } = useOfficerWorkspace();
   const [feedback, setFeedback] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const hasActiveAssignment = useMemo(
@@ -26,6 +27,17 @@ export function IncidentsScreen() {
     [incidents],
   );
   const isAvailable = duty?.is_on_duty ?? false;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!reportConfirmation) return;
+
+      // Reporting first returns this nested stack to its list. Only after the
+      // list is focused do we switch tabs, leaving Incidents clean for reuse.
+      const frame = requestAnimationFrame(() => router.navigate("/overview"));
+      return () => cancelAnimationFrame(frame);
+    }, [reportConfirmation, router]),
+  );
 
   const handleClaim = useCallback(
     async (incidentId: string) => {

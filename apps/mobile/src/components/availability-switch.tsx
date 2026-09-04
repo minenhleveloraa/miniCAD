@@ -1,4 +1,3 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
 
 import { colors, fonts, radius, spacing } from "@/theme";
@@ -7,7 +6,6 @@ type AvailabilitySwitchProps = {
   disabled: boolean;
   isOn: boolean;
   loading?: boolean;
-  locked?: boolean;
   onChange: (nextValue: boolean) => void;
 };
 
@@ -16,7 +14,6 @@ export function AvailabilitySwitch({
   disabled,
   isOn,
   loading = false,
-  locked = false,
   onChange,
 }: AvailabilitySwitchProps) {
   return (
@@ -40,7 +37,7 @@ export function AvailabilitySwitch({
       })}
     >
       <Text style={{ color: colors.onDark, fontFamily: fonts.sansBold, fontSize: 15 }}>
-        {locked ? "Responding · status locked" : isOn ? "Available" : "Off duty"}
+        {isOn ? "Available" : "Off duty"}
       </Text>
       <View
         style={{
@@ -65,8 +62,6 @@ export function AvailabilitySwitch({
         >
           {loading ? (
             <ActivityIndicator size="small" color={isOn ? colors.accent : colors.inkMuted} />
-          ) : locked ? (
-            <MaterialCommunityIcons name="lock-outline" size={17} color={colors.accent} />
           ) : (
             <View
               style={{

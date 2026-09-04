@@ -14,6 +14,10 @@ import { supabase } from "@/lib/supabase";
 import type { IncidentRow, IncidentStatus, OfficerDutyRow, ProfileRow } from "@/types/database";
 
 type ConnectionState = "connecting" | "live" | "offline";
+type ReportConfirmation = {
+  incidentId: string;
+  submittedAt: number;
+};
 export type ClaimIncidentResult =
   | "claimed"
   | "already-claimed"
@@ -30,6 +34,7 @@ type OfficerWorkspaceContextValue = {
   ) => Promise<ResponseMutationResult>;
   claimIncident: (incidentId: string) => Promise<ClaimIncidentResult>;
   claimingIncidentId: string | null;
+  clearReportConfirmation: () => void;
   connection: ConnectionState;
   duty: OfficerDutyRow | null;
   dutyUpdating: boolean;
@@ -37,6 +42,7 @@ type OfficerWorkspaceContextValue = {
   incidents: IncidentRow[];
   initialLoading: boolean;
   profile: ProfileRow | null;
+  reportConfirmation: ReportConfirmation | null;
   reportSubmitting: boolean;
   responseUpdatingId: string | null;
   setDuty: (isOnDuty: boolean) => Promise<void>;
@@ -70,6 +76,7 @@ export function OfficerWorkspaceProvider({ children, officerId }: PropsWithChild
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [initialLoading, setInitialLoading] = useState(() => Boolean(supabase));
   const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [reportConfirmation, setReportConfirmation] = useState<ReportConfirmation | null>(null);
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [responseUpdatingId, setResponseUpdatingId] = useState<string | null>(null);
   const activeIncident = useMemo(
@@ -81,6 +88,7 @@ export function OfficerWorkspaceProvider({ children, officerId }: PropsWithChild
       ) ?? null,
     [incidents, officerId],
   );
+  const clearReportConfirmation = useCallback(() => setReportConfirmation(null), []);
 
   const loadSnapshot = useCallback(async () => {
     const client = supabase;
@@ -278,6 +286,7 @@ export function OfficerWorkspaceProvider({ children, officerId }: PropsWithChild
 
       // Resolved incidents leave the active officer snapshot immediately. The
       // database broadcast reconciles every other connected client.
+      setReportConfirmation({ incidentId, submittedAt: Date.now() });
       setIncidents((current) => current.filter((incident) => incident.id !== incidentId));
       setReportSubmitting(false);
       return "success";
@@ -291,6 +300,7 @@ export function OfficerWorkspaceProvider({ children, officerId }: PropsWithChild
       advanceIncidentStatus,
       claimIncident,
       claimingIncidentId,
+      clearReportConfirmation,
       connection,
       duty,
       dutyUpdating,
@@ -298,6 +308,7 @@ export function OfficerWorkspaceProvider({ children, officerId }: PropsWithChild
       incidents,
       initialLoading,
       profile,
+      reportConfirmation,
       reportSubmitting,
       responseUpdatingId,
       async setDuty(isOnDuty) {
@@ -336,6 +347,7 @@ export function OfficerWorkspaceProvider({ children, officerId }: PropsWithChild
       advanceIncidentStatus,
       claimIncident,
       claimingIncidentId,
+      clearReportConfirmation,
       connection,
       duty,
       dutyUpdating,
@@ -344,6 +356,7 @@ export function OfficerWorkspaceProvider({ children, officerId }: PropsWithChild
       initialLoading,
       officerId,
       profile,
+      reportConfirmation,
       reportSubmitting,
       responseUpdatingId,
       submitIncidentReport,

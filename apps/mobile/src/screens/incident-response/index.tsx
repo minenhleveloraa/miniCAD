@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatIncidentNumber } from "@/components/incident-card";
 import { useOfficerWorkspace } from "@/features/workspace/officer-workspace-provider";
 import { colors, fonts, radius, shadows, spacing, typography } from "@/theme";
-import type { IncidentPriority, IncidentStatus } from "@/types/database";
+import type { IncidentPriority, IncidentRow, IncidentStatus } from "@/types/database";
 
 type IncidentResponseScreenProps = {
   incidentId: string;
@@ -110,14 +109,9 @@ export function IncidentResponseScreen({ incidentId }: IncidentResponseScreenPro
   const [actionsTaken, setActionsTaken] = useState("");
   const [outcome, setOutcome] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
-  const incident = useMemo(() => incidents.find((item) => item.id === incidentId), [incidentId, incidents]);
-
-  function returnToOverview() {
-    // A single dismiss action removes the completed response from the nested
-    // Incident stack while returning to Overview. Dispatching two navigation
-    // updates here can race the screen unmount in React Native.
-    router.dismissTo("/overview");
-  }
+  const [submissionSnapshot, setSubmissionSnapshot] = useState<IncidentRow | null>(null);
+  const liveIncident = useMemo(() => incidents.find((item) => item.id === incidentId), [incidentId, incidents]);
+  const incident = liveIncident ?? submissionSnapshot;
 
   if (!incident) {
     return (
@@ -135,7 +129,7 @@ export function IncidentResponseScreen({ incidentId }: IncidentResponseScreenPro
             </Text>
             <Pressable
               accessibilityRole="button"
-              onPress={returnToOverview}
+              onPress={() => router.dismissAll()}
               style={{ paddingHorizontal: spacing.lg, paddingVertical: 13, borderRadius: radius.full, backgroundColor: colors.ink }}
             >
               <Text style={{ color: colors.onDark, ...typography.label }}>Return to overview</Text>
@@ -167,13 +161,18 @@ export function IncidentResponseScreen({ incidentId }: IncidentResponseScreenPro
 
   async function handleSubmitReport() {
     setFeedback(null);
+    // Preserve the visible record while Supabase removes the resolved incident
+    // from the active Realtime snapshot.
+    setSubmissionSnapshot(responseIncident);
     const result = await submitIncidentReport(responseIncident.id, actionsTaken.trim(), outcome.trim());
     if (result === "success") {
-      Alert.alert("Report submitted", "The incident is resolved and you are available for a new response.", [
-        { text: "Done", onPress: returnToOverview },
-      ]);
+      // Pop this detail screen first. The focused Incidents list then switches
+      // to Overview, preventing stale completed routes and unmounted updates.
+      router.dismissAll();
       return;
     }
+
+    setSubmissionSnapshot(null);
 
     setFeedback(
       result === "invalid-report"

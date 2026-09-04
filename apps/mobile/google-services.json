@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "268704896692",
+    "project_id": "minicad0",
+    "storage_bucket": "minicad0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:268704896692:android:f6b6fa90562bc54f80e9e1",
+        "android_client_info": {
+          "package_name": "za.co.minicad.officer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNCtjznobErhlJ_xQ_wsiqTwAkro-ugQA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

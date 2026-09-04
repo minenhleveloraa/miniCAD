@@ -1,11 +1,13 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AvailabilitySwitch } from "@/components/availability-switch";
 import { IncidentCard } from "@/components/incident-card";
 import { LiveStatusPill } from "@/components/live-status-pill";
+import { ReportSuccessToast } from "@/components/report-success-toast";
 import { useAuth } from "@/features/auth/auth-provider";
 import { useOfficerWorkspace } from "@/features/workspace/officer-workspace-provider";
 import { colors, fonts, radius, shadows, spacing, typography } from "@/theme";
@@ -21,25 +23,56 @@ export function OverviewScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuth();
-  const { activeIncident, connection, duty, dutyUpdating, errorMessage, incidents, initialLoading, profile, setDuty } =
-    useOfficerWorkspace();
+  const {
+    activeIncident,
+    clearReportConfirmation,
+    connection,
+    duty,
+    dutyUpdating,
+    errorMessage,
+    incidents,
+    initialLoading,
+    profile,
+    reportConfirmation,
+    setDuty,
+  } = useOfficerWorkspace();
+  const [showReportToast, setShowReportToast] = useState(false);
+  const handledReportRef = useRef<number | null>(null);
   const isOnDuty = duty?.is_on_duty ?? false;
   const displayName = profile?.display_name ?? session?.user.email?.split("@")[0] ?? "Officer";
   const firstName = displayName.split(" ")[0];
   const assignedCount = incidents.filter((incident) => incident.claimed_by === session?.user.id).length;
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!reportConfirmation || handledReportRef.current === reportConfirmation.submittedAt) return;
+
+      handledReportRef.current = reportConfirmation.submittedAt;
+      setShowReportToast(true);
+      clearReportConfirmation();
+    }, [clearReportConfirmation, reportConfirmation]),
+  );
+
+  useEffect(() => {
+    if (!showReportToast) return;
+
+    const timer = setTimeout(() => setShowReportToast(false), 3400);
+    return () => clearTimeout(timer);
+  }, [showReportToast]);
+
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{
-        gap: spacing.lg,
-        paddingTop: insets.top + spacing.md,
-        paddingHorizontal: spacing.lg,
-        paddingBottom: insets.bottom + 124,
-        backgroundColor: colors.canvas,
-      }}
-    >
+    <View style={{ flex: 1, backgroundColor: colors.canvas }}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          gap: spacing.lg,
+          paddingTop: insets.top + spacing.md,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: insets.bottom + 124,
+          backgroundColor: colors.canvas,
+        }}
+      >
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
           <View
@@ -127,13 +160,14 @@ export function OverviewScreen() {
             : "Signing in does not make you available. Change this only when you are ready to receive work."}
         </Text>
 
-        <AvailabilitySwitch
-          disabled={dutyUpdating || initialLoading || Boolean(activeIncident)}
-          isOn={isOnDuty}
-          loading={dutyUpdating || initialLoading}
-          locked={Boolean(activeIncident)}
-          onChange={(nextValue) => void setDuty(nextValue)}
-        />
+        {!activeIncident ? (
+          <AvailabilitySwitch
+            disabled={dutyUpdating || initialLoading}
+            isOn={isOnDuty}
+            loading={dutyUpdating || initialLoading}
+            onChange={(nextValue) => void setDuty(nextValue)}
+          />
+        ) : null}
       </View>
 
       {errorMessage ? (
@@ -194,7 +228,7 @@ export function OverviewScreen() {
 
       <View style={{ gap: spacing.md }}>
         <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: spacing.md }}>
-          <View>
+          <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={{ color: colors.ink, fontFamily: fonts.serif, fontSize: 24 }}>Active incidents</Text>
             <Text style={{ marginTop: 3, color: colors.inkMuted, ...typography.caption }}>
               Authorized updates appear here automatically.
@@ -203,7 +237,14 @@ export function OverviewScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push("/incidents")}
-            style={({ pressed }) => ({ opacity: pressed ? 0.55 : 1 })}
+            style={({ pressed }) => ({
+              flexShrink: 0,
+              minHeight: 40,
+              justifyContent: "center",
+              paddingHorizontal: spacing.sm,
+              paddingVertical: spacing.xs,
+              opacity: pressed ? 0.55 : 1,
+            })}
           >
             <Text style={{ color: colors.accent, ...typography.label }}>View all</Text>
           </Pressable>
@@ -258,6 +299,8 @@ export function OverviewScreen() {
           ))
         )}
       </View>
-    </ScrollView>
+      </ScrollView>
+      {showReportToast ? <ReportSuccessToast /> : null}
+    </View>
   );
 }

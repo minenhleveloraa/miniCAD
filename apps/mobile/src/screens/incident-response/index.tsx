@@ -113,10 +113,10 @@ export function IncidentResponseScreen({ incidentId }: IncidentResponseScreenPro
   const incident = useMemo(() => incidents.find((item) => item.id === incidentId), [incidentId, incidents]);
 
   function returnToOverview() {
-    // Reset the nested Incident stack before changing tabs. Without this, the
-    // completed response screen remains mounted and reappears on the next visit.
-    router.dismissAll();
-    router.replace("/overview");
+    // A single dismiss action removes the completed response from the nested
+    // Incident stack while returning to Overview. Dispatching two navigation
+    // updates here can race the screen unmount in React Native.
+    router.dismissTo("/overview");
   }
 
   if (!incident) {
